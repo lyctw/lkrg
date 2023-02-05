@@ -10,12 +10,16 @@ P_PWD ?= $(shell pwd)
 P_KVER ?= $(shell uname -r)
 P_BOOTUP_SCRIPT ?= scripts/bootup/lkrg-bootup.sh
 TARGET := lkrg
-ifneq ($(KERNELRELEASE),)
-    KERNEL := /lib/modules/$(KERNELRELEASE)/build
-else
-    ## KERNELRELEASE not set.
-    KERNEL := /lib/modules/$(P_KVER)/build
-endif
+#ifneq ($(KERNELRELEASE),)
+#    KERNEL := /lib/modules/$(KERNELRELEASE)/build
+#else
+#    ## KERNELRELEASE not set.
+#    KERNEL := /lib/modules/$(P_KVER)/build
+#endif
+
+ARCH=riscv
+CROSS_COMPILE=riscv64-linux-
+KERNEL = /local/home/users3/peterlin/Downloads/lkrg_play/linux
 
 #
 # Use DEBUG=on for debug build.
@@ -38,6 +42,7 @@ $(TARGET)-objs += src/modules/ksyms/p_resolve_ksym.o \
                   src/modules/database/arch/x86/p_switch_idt/p_switch_idt.o \
                   src/modules/database/arch/arm64/p_arm64_metadata.o \
                   src/modules/database/arch/arm/p_arm_metadata.o \
+                  src/modules/database/arch/riscv/p_riscv_metadata.o \
                   src/modules/database/arch/p_arch_metadata.o \
                   src/modules/database/JUMP_LABEL/p_arch_jump_label_transform/p_arch_jump_label_transform.o \
                   src/modules/database/JUMP_LABEL/p_arch_jump_label_transform_apply/p_arch_jump_label_transform_apply.o \
@@ -97,7 +102,7 @@ $(TARGET)-objs += src/modules/ksyms/p_resolve_ksym.o \
 
 all:
 #	$(MAKE) -C $(KERNEL) M=$(P_PWD) modules CONFIG_DEBUG_SECTION_MISMATCH=y
-	$(MAKE) -C $(KERNEL) M=$(P_PWD) modules
+	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KERNEL) M=$(P_PWD) modules
 	mkdir -p $(P_OUTPUT)
 	cp $(P_PWD)/$(TARGET).ko $(P_OUTPUT)
 
