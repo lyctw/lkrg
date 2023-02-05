@@ -131,7 +131,7 @@ static inline unsigned long get_random_long(void) {
 //#define p_lkrg_read_only __attribute__((__section__(".data..p_lkrg_read_only"),aligned(PAGE_SIZE)))
 #define __p_lkrg_read_only __attribute__((__section__(".p_lkrg_read_only")))
 
-#if defined(CONFIG_X86_64) || defined(CONFIG_ARM64)
+#if defined(CONFIG_X86_64) || defined(CONFIG_ARM64) || defined(CONFIG_RISCV)
  #define P_LKRG_MARKER1 0x3369705f6d616441
  #define P_LKRG_MARKER2 0xdeadbabedeadbabe
 #else
@@ -207,7 +207,7 @@ typedef struct _p_lkrg_global_symbols_structure {
                                      pgprot_t mask_set, pgprot_t mask_clr,
                                      int force_split, int in_flag,
                                      struct page **pages);
- #elif defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+ #elif defined(CONFIG_ARM) || defined(CONFIG_ARM64) || defined(CONFIG_RISCV)
    int (*p_change_memory_common)(unsigned long addr, int numpages,
                                  pgprot_t set_mask, pgprot_t clear_mask);
  #endif

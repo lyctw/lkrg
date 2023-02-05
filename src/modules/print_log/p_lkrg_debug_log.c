@@ -104,6 +104,10 @@ static struct p_addr_name {
    P_LKRG_DEBUG_RULE(p_dump_arm64_metadata),
 #endif
 
+#if defined(CONFIG_RISCV)
+   P_LKRG_DEBUG_RULE(p_dump_riscv_metadata),
+#endif
+
 #ifdef P_LKRG_STRONG_KPROBE_DEBUG
    P_LKRG_DEBUG_RULE_KPROBE(p_cap_task_prctl),
    P_LKRG_DEBUG_RULE_KPROBE(p_sys_capset),

@@ -790,6 +790,168 @@ static inline void p_lkrg_close_rw(void) {
    mutex_unlock(&p_ro_page_mutex);
 }
 
+/* RISCV */
+#elif defined(CONFIG_RISCV)
+
+/*
+ * Get
+ */
+static inline unsigned long p_regs_get_arg1(struct pt_regs *p_regs) {
+   return p_regs->a0;
+}
+
+static inline unsigned long p_regs_get_arg2(struct pt_regs *p_regs) {
+   return p_regs->a1;
+}
+
+static inline unsigned long p_regs_get_fp(struct pt_regs *p_regs) {
+   return p_regs->s0;
+}
+
+static inline unsigned long p_regs_get_sp(struct pt_regs *p_regs) {
+   return p_regs->sp;
+}
+
+static inline unsigned long p_regs_get_ip(struct pt_regs *p_regs) {
+   return 0; //p_regs->pc;
+}
+
+static inline unsigned long p_regs_get_ret(struct pt_regs *p_regs) {
+   return p_regs->ra;
+}
+
+static inline unsigned long p_get_thread_sp(struct task_struct *p_arg) {
+   return p_arg->thread.sp;
+}
+
+/*
+ * Syscalls
+ */
+static inline unsigned long p_syscall_get_arg1(struct pt_regs *p_regs) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0) && defined(CONFIG_ARCH_HAS_SYSCALL_WRAPPER)
+   return p_regs_get_arg1((struct pt_regs *)p_regs_get_arg1(p_regs));
+#else
+   return p_regs_get_arg1(p_regs);
+#endif
+}
+
+static inline unsigned long p_syscall_get_arg2(struct pt_regs *p_regs) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0) && defined(CONFIG_ARCH_HAS_SYSCALL_WRAPPER)
+   return p_regs_get_arg2((struct pt_regs *)p_regs_get_arg1(p_regs));
+#else
+   return p_regs_get_arg2(p_regs);
+#endif
+}
+
+/*
+ * Set
+ */
+static inline void p_regs_set_arg1(struct pt_regs *p_regs, unsigned long p_val) {
+   p_regs->a0 = p_val;
+}
+
+static inline void p_regs_set_arg2(struct pt_regs *p_regs, unsigned long p_val) {
+   p_regs->a1 = p_val;
+}
+
+static inline void p_regs_set_ip(struct pt_regs *p_regs, unsigned long p_val) {
+   //p_regs->pc = p_val;
+}
+
+static inline void p_regs_set_ret(struct pt_regs *p_regs, unsigned long p_val) {
+   p_regs->ra = p_val;
+}
+
+/*
+ * Syscalls
+ */
+static inline void p_syscall_set_arg1(struct pt_regs *p_regs, unsigned long p_val) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0) && defined(CONFIG_ARCH_HAS_SYSCALL_WRAPPER)
+   p_regs_set_arg1((struct pt_regs *)p_regs_get_arg1(p_regs), p_val);
+#else
+   p_regs_set_arg1(p_regs, p_val);
+#endif
+}
+
+static inline void p_syscall_set_arg2(struct pt_regs *p_regs, unsigned long p_val) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0) && defined(CONFIG_ARCH_HAS_SYSCALL_WRAPPER)
+   p_regs_set_arg2((struct pt_regs *)p_regs_get_arg1(p_regs), p_val);
+#else
+   p_regs_set_arg2(p_regs, p_val);
+#endif
+}
+
+static inline int p_set_memory_rw(unsigned long p_addr, int p_numpages) {
+
+#if defined(P_KERNEL_AGGRESSIVE_INLINING)
+   return P_SYM(p_set_memory_rw)(p_addr, p_numpages);
+#else
+   return P_SYM(p_change_memory_common)(p_addr, p_numpages,
+                                        __pgprot(_PAGE_WRITE),
+                                        __pgprot(_PAGE_READ));
+#endif
+}
+
+static inline int p_set_memory_ro(unsigned long p_addr, int p_numpages) {
+
+#if defined(P_KERNEL_AGGRESSIVE_INLINING)
+   return P_SYM(p_set_memory_ro)(p_addr, p_numpages);
+#else
+   return P_SYM(p_change_memory_common)(p_addr, p_numpages,
+                                        __pgprot(_PAGE_READ),
+                                        __pgprot(_PAGE_WRITE));
+#endif
+}
+
+static inline int p_set_memory_np(unsigned long p_addr, int p_numpages) {
+
+#if defined(P_KERNEL_AGGRESSIVE_INLINING)
+   return P_SYM(p_set_memory_valid)(p_addr, p_numpages, 0);
+#else
+   return P_SYM(p_change_memory_common)(p_addr, p_numpages,
+                                        __pgprot(0),
+                                        __pgprot(_PAGE_PRESENT));
+#endif
+}
+
+static inline int p_set_memory_p(unsigned long p_addr, int p_numpages) {
+
+#if defined(P_KERNEL_AGGRESSIVE_INLINING)
+   return P_SYM(p_set_memory_valid)(p_addr, p_numpages, 1);
+#else
+   return P_SYM(p_change_memory_common)(p_addr, p_numpages,
+                                        __pgprot(_PAGE_PRESENT),
+                                        __pgprot(0));
+#endif
+}
+
+static inline void p_lkrg_open_rw(void) {
+
+   unsigned long p_flags;
+
+   mutex_lock(&p_ro_page_mutex);
+
+   preempt_disable();
+   barrier();
+   p_set_memory_rw((unsigned long)P_CTRL_ADDR,1);
+   barrier();
+   /* It's a good time to verify if everything is fine */
+   p_ed_pcfi_cpu(1);
+   p_tasks_read_lock(&p_flags);
+   p_ed_validate_current();
+   p_tasks_read_unlock(&p_flags);
+}
+
+static inline void p_lkrg_close_rw(void) {
+
+   barrier();
+   p_set_memory_ro((unsigned long)P_CTRL_ADDR,1);
+   barrier();
+   preempt_enable(); //_no_resched();
+
+   mutex_unlock(&p_ro_page_mutex);
+}
+
 #endif
 
 #endif
